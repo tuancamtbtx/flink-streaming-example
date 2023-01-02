@@ -1,0 +1,69 @@
+environment: uat
+
+appVersion: flink.apache.org/v1beta1
+
+workloadType: "FlinkDeployment"
+
+image:
+  imageName: "example-build"
+  imageTag: "build-123"
+
+imagePullPolicy: Always
+
+flinkConfiguration:
+  taskmanager.numberOfTaskSlots: "2"
+
+jobManager:
+  cpu: 0.1
+  memory: 100mb
+  replicaCount: 1
+
+## taskmanager spec
+taskManager:
+  cpu: 0.1
+  memory: 100mb
+  replicaCount: 1
+  volumes:
+    - name: datadir
+      persistentVolumeClaim:
+        claimName: flink-pvc
+  volumeMounts:
+    - mountPath: /data/local
+      name: datadir
+
+specAnnotations: {}
+
+# mode is NATIVE or STANDALONE
+mode: "STANDALONE"
+
+envVars:
+  APPLICATION_CONF: /opt/flink/config/app.conf
+  GOOGLE_APPLICATION_CREDENTIALS: /.secrets/key.json
+  DEBUG: yes
+
+# UpgradeMode: SAVEPOINT, LAST_STATE, STATELESS
+job:
+  jarURI: local:///opt/flink/examples/streaming/StateMachineExample.jar
+  parallelism: 2
+  upgradeMode: savepoint
+  state: running
+  savepointTriggerNonce: 0
+  args:
+    - -Dabc=1
+
+envFrom:
+  - secretRef:
+      name: trackity-transform-env-secrets
+      optional: false
+
+ingress:
+  template: "{{name}}.{{namespace}}.dev.tiki.services"
+
+volumes:
+  - name: gcs-keyfile
+    secret:
+      secretName: files-trackity-transform-realtime
+volumeMounts:
+  - name: gcs-keyfile
+    mountPath: /.secrets/gcp
+    readOnly: true

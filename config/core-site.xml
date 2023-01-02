@@ -1,0 +1,10 @@
+<appConfiguration>
+  <property>
+    <name>google.cloud.auth.service.account.enable</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>google.cloud.auth.service.account.json.keyfile</name>
+    <value>/.secrets/gcp/</value>
+  </property>
+</appConfiguration>

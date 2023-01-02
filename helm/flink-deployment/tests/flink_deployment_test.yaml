@@ -1,0 +1,51 @@
+suite: Test FlinkDeployment
+templates:
+  - flink-deployment.yaml
+tests:
+  - it: render when workloadType = FlinkDeployment
+    values:
+      - ./values/flink_deployment_values.yaml
+    asserts:
+      - isKind:
+          of: FlinkDeployment
+      - equal:
+          path: spec.podTemplate.spec.containers
+          value:
+            - name: flink-main-container
+              env:
+                - name: APPLICATION_CONF
+                  value: "/opt/flink/config/app.conf"
+                - name: DEBUG
+                  value: "true"
+                - name: GOOGLE_APPLICATION_CREDENTIALS
+                  value: "/.secrets/key.json"
+              envFrom:
+                - secretRef:
+                    name: trackity-transform-env-secrets
+                    optional: false
+      - equal:
+          name: "jobManager volumes"
+          path: spec.jobManager.podTemplate.spec.volumes
+          value:
+            - name: gcs-keyfile
+              secret:
+                secretName: files-trackity-transform-realtime
+      - equal:
+          path: spec.taskManager.podTemplate.spec.volumes
+          value:
+            - name: datadir
+              persistentVolumeClaim:
+                claimName: flink-pvc
+            - name: gcs-keyfile
+              secret:
+                secretName: files-trackity-transform-realtime
+      - equal:
+          path: spec.job
+          value:
+            jarURI: local:///opt/flink/examples/streaming/StateMachineExample.jar
+            parallelism: 2
+            upgradeMode: savepoint
+            args:
+              - "-Dabc=1"
+            state: running
+            allowNonRestoredState: true

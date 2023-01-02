@@ -1,0 +1,50 @@
+environment: uat
+
+appVersion: flink.apache.org/v1beta1
+
+workloadType: "FlinkDeployment"
+
+image:
+  imageName: ""
+  imageTag: ""
+  imageRepo: "asia.gcr.io/tikivn"
+
+imagePullPolicy: IfNotPresent
+
+flinkConfiguration:
+  state.backend.local-recovery: false
+  state.backend: rocksdb
+  state.backend.incremental: true
+  metrics.reporters: prom
+  metrics.reporter.prom.class: org.apache.flink.metrics.prometheus.PrometheusReporter
+  metrics.reporter.prom.port: 9249
+
+jobManager: {}
+
+## taskmanager spec
+taskManager: {}
+
+specAnnotations: {}
+
+# mode is NATIVE or STANDALONE
+mode: "native"
+
+# UpgradeMode: SAVEPOINT, LAST_STATE, STATELESS
+job:
+  jarURI: ""
+  parallelism: 1
+  upgradeMode: savepoint
+  state: running
+  savepointTriggerNonce: 0
+  args: []
+  allowNonRestoredState: true
+  entryClass: ""
+
+envVars: {}
+
+ingress:
+  template: "{{name}}.{{namespace}}.tiki.services"
+
+persistentVolumeClaim: {}
+
+securityContext: {}

@@ -1,0 +1,849 @@
+
+
+---
+# Source: flink-deployment/templates/pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: flink-pvc-prod
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: ssd-as1b
+---
+# Source: flink-deployment/templates/flink-deployment.yaml
+# @formatter:off
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: trackitime-prod
+spec:
+  image: "asia.gcr.io/tikivn/flink-k8s-example:0.7"
+  imagePullPolicy: IfNotPresent
+  flinkVersion: v1_15
+  flinkConfiguration:
+    "akka.ask.timeout": "120s"
+    "high-availability": "org.apache.flink.kubernetes.highavailability.KubernetesHaServicesFactory"
+    "high-availability.storageDir": "gs://tiki-trackity-realtime/data/flink/prod/flink-ha"
+    "metrics.reporter.prom.class": "org.apache.flink.metrics.prometheus.PrometheusReporter"
+    "metrics.reporter.prom.port": "9500"
+    "metrics.reporters": "prom"
+    "state.backend": "rocksdb"
+    "state.backend.incremental": "true"
+    "state.backend.local-recovery": "false"
+    "state.backend.rocksdb.localdir": "/trackity/data/local"
+    "state.backend.rocksdb.log.dir": "/trackity/data/log"
+    "state.checkpoints.dir": "gs://tiki-trackity-realtime/data/flink/prod/checkpoints"
+    "state.savepoints.dir": "gs://tiki-trackity-realtime/data/flink/prod/savepoints"
+    "state.storage.fs.memory-threshold": "1024000b"
+    "taskmanager.memory.managed.size": "2000mb"
+    "taskmanager.memory.task.heap.size": "7500mb"
+    "taskmanager.memory.task.off-heap.size": "1000mb"
+    "taskmanager.numberOfTaskSlots": "64"
+  serviceAccount: "sherlock"
+  jobManager:
+    resource:
+      memory: 3gb
+      cpu: 1
+    replicas: 1
+    podTemplate:
+      spec:
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+            - mountPath: /.secrets/gcp
+              name: gcs-keyfile
+              readOnly: true
+        volumes:
+        - name: gcs-keyfile
+          secret:
+            secretName: files-trackity-transform-realtime
+  taskManager:
+    resource:
+      memory: 12gb
+      cpu: 3
+    replicas: 1
+    podTemplate:
+      spec:
+        nodeSelector:
+          tiki.services/dedicated: np-6-39
+        tolerations:
+          - effect: NoSchedule
+            key: dedicated
+            operator: Equal
+            value: np-6-39
+        affinity:
+          podAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                - key: tiki.services/dedicated
+                  operator: In
+                  values:
+                  - np-6-39
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+              - mountPath: /trackity/data
+                name: datadir
+              - mountPath: /.secrets/gcp
+                name: gcs-keyfile
+                readOnly: true
+        volumes:
+          - name: datadir
+            persistentVolumeClaim:
+              claimName: flink-pvc-prod
+          - name: gcs-keyfile
+            secret:
+              secretName: files-trackity-transform-realtime
+  podTemplate:
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      annotations:
+        prometheus.io/port: "9500"
+        prometheus.io/scrape: "true"
+        tiki.vn/graylog: "true"
+    spec:
+      imagePullSecrets:
+        - name: tiki-gcr
+      securityContext:
+        fsGroup: 9999
+        runAsGroup: 9999
+        runAsNonRoot: true
+        runAsUser: 9999
+      containers:
+        - name: flink-main-container
+          env:
+              - name: APPLICATION_CONF
+                value: "/opt/flink/config/prod.conf"
+              - name: GOOGLE_APPLICATION_CREDENTIALS
+                value: "/.secrets/gcp/dwp-pp-streaming-keyfile"
+          envFrom:
+            - secretRef:
+                name: trackity-transform-env-secrets
+                optional: false
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/enable-access-log: "false"
+      nginx.ingress.kubernetes.io/proxy-body-size: 50m
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    template: '{{name}}-{{namespace}}.tiki.services'
+  job:
+    jarURI: local:///opt/flink/lib/trackity-streaming.jar
+    parallelism: 32
+    upgradeMode: last-state
+    state: running
+    entryClass: vn.tiki.trackity.transform.MainApp
+    allowNonRestoredState: true
+---
+# Source: flink-deployment/templates/pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: flink-pvc-prod
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: ssd-as1b
+---
+# Source: flink-deployment/templates/flink-deployment.yaml
+# @formatter:off
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: trackitime-prod
+spec:
+  image: "asia.gcr.io/tikivn/flink-k8s-example:0.7"
+  imagePullPolicy: IfNotPresent
+  flinkVersion: v1_15
+  flinkConfiguration:
+    "akka.ask.timeout": "120s"
+    "high-availability": "org.apache.flink.kubernetes.highavailability.KubernetesHaServicesFactory"
+    "high-availability.storageDir": "gs://tiki-trackity-realtime/data/flink/prod/flink-ha"
+    "metrics.reporter.prom.class": "org.apache.flink.metrics.prometheus.PrometheusReporter"
+    "metrics.reporter.prom.port": "9500"
+    "metrics.reporters": "prom"
+    "state.backend": "rocksdb"
+    "state.backend.incremental": "true"
+    "state.backend.local-recovery": "false"
+    "state.backend.rocksdb.localdir": "/trackity/data/local"
+    "state.backend.rocksdb.log.dir": "/trackity/data/log"
+    "state.checkpoints.dir": "gs://tiki-trackity-realtime/data/flink/prod/checkpoints"
+    "state.savepoints.dir": "gs://tiki-trackity-realtime/data/flink/prod/savepoints"
+    "state.storage.fs.memory-threshold": "1024000b"
+    "taskmanager.memory.managed.size": "2000mb"
+    "taskmanager.memory.task.heap.size": "7500mb"
+    "taskmanager.memory.task.off-heap.size": "1000mb"
+    "taskmanager.numberOfTaskSlots": "64"
+  serviceAccount: "sherlock"
+  jobManager:
+    resource:
+      memory: 3gb
+      cpu: 1
+    replicas: 1
+    podTemplate:
+      spec:
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+            - mountPath: /.secrets/gcp
+              name: gcs-keyfile
+              readOnly: true
+        volumes:
+        - name: gcs-keyfile
+          secret:
+            secretName: files-trackity-transform-realtime
+  taskManager:
+    resource:
+      memory: 12gb
+      cpu: 3
+    replicas: 1
+    podTemplate:
+      spec:
+        nodeSelector:
+          tiki.services/dedicated: np-6-39
+        tolerations:
+          - effect: NoSchedule
+            key: dedicated
+            operator: Equal
+            value: np-6-39
+        affinity:
+          podAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - trackitime-prod
+                - key: component
+                  operator: In
+                  values:
+                  - taskmanager
+              topologyKey: topology.kubernetes.io/zone
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+              - mountPath: /trackity/data
+                name: datadir
+              - mountPath: /.secrets/gcp
+                name: gcs-keyfile
+                readOnly: true
+        volumes:
+          - name: datadir
+            persistentVolumeClaim:
+              claimName: flink-pvc-prod
+          - name: gcs-keyfile
+            secret:
+              secretName: files-trackity-transform-realtime
+  podTemplate:
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      annotations:
+        prometheus.io/port: "9500"
+        prometheus.io/scrape: "true"
+        tiki.vn/graylog: "true"
+    spec:
+      imagePullSecrets:
+        - name: tiki-gcr
+      securityContext:
+        fsGroup: 9999
+        runAsGroup: 9999
+        runAsNonRoot: true
+        runAsUser: 9999
+      containers:
+        - name: flink-main-container
+          env:
+              - name: APPLICATION_CONF
+                value: "/opt/flink/config/prod.conf"
+              - name: GOOGLE_APPLICATION_CREDENTIALS
+                value: "/.secrets/gcp/dwp-pp-streaming-keyfile"
+          envFrom:
+            - secretRef:
+                name: trackity-transform-env-secrets
+                optional: false
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/enable-access-log: "false"
+      nginx.ingress.kubernetes.io/proxy-body-size: 50m
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    template: '{{name}}-{{namespace}}.tiki.services'
+  job:
+    jarURI: local:///opt/flink/lib/trackity-streaming.jar
+    parallelism: 32
+    upgradeMode: last-state
+    state: running
+    entryClass: vn.tiki.trackity.transform.MainApp
+    allowNonRestoredState: true
+---
+# Source: flink-deployment/templates/pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: flink-pvc-prod
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: ssd-as1b
+---
+# Source: flink-deployment/templates/flink-deployment.yaml
+# @formatter:off
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: trackitime-prod
+spec:
+  image: "asia.gcr.io/tikivn/flink-k8s-example:0.7"
+  imagePullPolicy: IfNotPresent
+  flinkVersion: v1_15
+  flinkConfiguration:
+    "akka.ask.timeout": "120s"
+    "high-availability": "org.apache.flink.kubernetes.highavailability.KubernetesHaServicesFactory"
+    "high-availability.storageDir": "gs://tiki-trackity-realtime/data/flink/prod/flink-ha"
+    "metrics.reporter.prom.class": "org.apache.flink.metrics.prometheus.PrometheusReporter"
+    "metrics.reporter.prom.port": "9500"
+    "metrics.reporters": "prom"
+    "state.backend": "rocksdb"
+    "state.backend.incremental": "true"
+    "state.backend.local-recovery": "false"
+    "state.backend.rocksdb.localdir": "/trackity/data/local"
+    "state.backend.rocksdb.log.dir": "/trackity/data/log"
+    "state.checkpoints.dir": "gs://tiki-trackity-realtime/data/flink/prod/checkpoints"
+    "state.savepoints.dir": "gs://tiki-trackity-realtime/data/flink/prod/savepoints"
+    "state.storage.fs.memory-threshold": "1024000b"
+    "taskmanager.memory.managed.size": "2000mb"
+    "taskmanager.memory.task.heap.size": "7500mb"
+    "taskmanager.memory.task.off-heap.size": "1000mb"
+    "taskmanager.numberOfTaskSlots": "64"
+  serviceAccount: "sherlock"
+  jobManager:
+    resource:
+      memory: 3gb
+      cpu: 1
+    replicas: 1
+    podTemplate:
+      spec:
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+            - mountPath: /.secrets/gcp
+              name: gcs-keyfile
+              readOnly: true
+        volumes:
+        - name: gcs-keyfile
+          secret:
+            secretName: files-trackity-transform-realtime
+  taskManager:
+    resource:
+      memory: 12gb
+      cpu: 3
+    replicas: 1
+    podTemplate:
+      spec:
+        nodeSelector:
+          tiki.services/dedicated: np-6-39
+        tolerations:
+          - effect: NoSchedule
+            key: dedicated
+            operator: Equal
+            value: np-6-39
+        affinity:
+          podAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - trackitime-prod
+                - key: component
+                  operator: In
+                  values:
+                  - taskmanager
+              topologyKey: topology.kubernetes.io/zone
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+              - mountPath: /trackity/data
+                name: datadir
+              - mountPath: /.secrets/gcp
+                name: gcs-keyfile
+                readOnly: true
+        volumes:
+          - name: datadir
+            persistentVolumeClaim:
+              claimName: flink-pvc-prod
+          - name: gcs-keyfile
+            secret:
+              secretName: files-trackity-transform-realtime
+  podTemplate:
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      annotations:
+        prometheus.io/port: "9500"
+        prometheus.io/scrape: "true"
+        tiki.vn/graylog: "true"
+    spec:
+      imagePullSecrets:
+        - name: tiki-gcr
+      securityContext:
+        fsGroup: 9999
+        runAsGroup: 9999
+        runAsNonRoot: true
+        runAsUser: 9999
+      containers:
+        - name: flink-main-container
+          env:
+              - name: APPLICATION_CONF
+                value: "/opt/flink/config/prod.conf"
+              - name: GOOGLE_APPLICATION_CREDENTIALS
+                value: "/.secrets/gcp/dwp-pp-streaming-keyfile"
+          envFrom:
+            - secretRef:
+                name: trackity-transform-env-secrets
+                optional: false
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/enable-access-log: "false"
+      nginx.ingress.kubernetes.io/proxy-body-size: 50m
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    template: '{{name}}-{{namespace}}.tiki.services'
+  job:
+    jarURI: local:///opt/flink/lib/trackity-streaming.jar
+    parallelism: 32
+    upgradeMode: last-state
+    state: running
+    entryClass: vn.tiki.trackity.transform.MainApp
+    allowNonRestoredState: true
+---
+# Source: flink-deployment/templates/pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: flink-pvc-prod
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: ssd-as1b
+---
+# Source: flink-deployment/templates/flink-deployment.yaml
+# @formatter:off
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: trackitime-prod
+spec:
+  image: "asia.gcr.io/tikivn/flink-k8s-example:0.7"
+  imagePullPolicy: IfNotPresent
+  flinkVersion: v1_15
+  flinkConfiguration:
+    "akka.ask.timeout": "120s"
+    "high-availability": "org.apache.flink.kubernetes.highavailability.KubernetesHaServicesFactory"
+    "high-availability.storageDir": "gs://tiki-trackity-realtime/data/flink/prod/flink-ha"
+    "metrics.reporter.prom.class": "org.apache.flink.metrics.prometheus.PrometheusReporter"
+    "metrics.reporter.prom.port": "9500"
+    "metrics.reporters": "prom"
+    "state.backend": "rocksdb"
+    "state.backend.incremental": "true"
+    "state.backend.local-recovery": "false"
+    "state.backend.rocksdb.localdir": "/trackity/data/local"
+    "state.backend.rocksdb.log.dir": "/trackity/data/log"
+    "state.checkpoints.dir": "gs://tiki-trackity-realtime/data/flink/prod/checkpoints"
+    "state.savepoints.dir": "gs://tiki-trackity-realtime/data/flink/prod/savepoints"
+    "state.storage.fs.memory-threshold": "1024000b"
+    "taskmanager.memory.managed.size": "2000mb"
+    "taskmanager.memory.task.heap.size": "7500mb"
+    "taskmanager.memory.task.off-heap.size": "1000mb"
+    "taskmanager.numberOfTaskSlots": "64"
+  serviceAccount: "sherlock"
+  jobManager:
+    resource:
+      memory: 3gb
+      cpu: 1
+    replicas: 1
+    podTemplate:
+      spec:
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+            - mountPath: /.secrets/gcp
+              name: gcs-keyfile
+              readOnly: true
+        volumes:
+        - name: gcs-keyfile
+          secret:
+            secretName: files-trackity-transform-realtime
+  taskManager:
+    resource:
+      memory: 12gb
+      cpu: 3
+    replicas: 1
+    podTemplate:
+      spec:
+        nodeSelector:
+          tiki.services/dedicated: np-6-39
+        tolerations:
+          - effect: NoSchedule
+            key: dedicated
+            operator: Equal
+            value: np-6-39
+        affinity:
+          podAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - trackitime-prod
+                - key: component
+                  operator: In
+                  values:
+                  - taskmanager
+              topologyKey: topology.kubernetes.io/zone
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+              - mountPath: /trackity/data
+                name: datadir
+              - mountPath: /.secrets/gcp
+                name: gcs-keyfile
+                readOnly: true
+        volumes:
+          - name: datadir
+            persistentVolumeClaim:
+              claimName: flink-pvc-prod
+          - name: gcs-keyfile
+            secret:
+              secretName: files-trackity-transform-realtime
+  podTemplate:
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      annotations:
+        prometheus.io/port: "9500"
+        prometheus.io/scrape: "true"
+        tiki.vn/graylog: "true"
+    spec:
+      imagePullSecrets:
+        - name: tiki-gcr
+      securityContext:
+        fsGroup: 9999
+        runAsGroup: 9999
+        runAsNonRoot: true
+        runAsUser: 9999
+      containers:
+        - name: flink-main-container
+          env:
+              - name: APPLICATION_CONF
+                value: "/opt/flink/config/prod.conf"
+              - name: GOOGLE_APPLICATION_CREDENTIALS
+                value: "/.secrets/gcp/dwp-pp-streaming-keyfile"
+          envFrom:
+            - secretRef:
+                name: trackity-transform-env-secrets
+                optional: false
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/enable-access-log: "false"
+      nginx.ingress.kubernetes.io/proxy-body-size: 50m
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    template: '{{name}}-{{namespace}}.tiki.services'
+  job:
+    jarURI: local:///opt/flink/lib/trackity-streaming.jar
+    parallelism: 32
+    upgradeMode: last-state
+    state: running
+    entryClass: vn.tiki.trackity.transform.MainApp
+    allowNonRestoredState: true
+---
+# Source: flink-deployment/templates/pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: flink-pvc-prod
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: ssd-as1b
+---
+# Source: flink-deployment/templates/flink-deployment.yaml
+# @formatter:off
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: trackitime-prod
+spec:
+  image: "asia.gcr.io/tikivn/flink-k8s-example:0.7"
+  imagePullPolicy: IfNotPresent
+  flinkVersion: v1_15
+  flinkConfiguration:
+    "akka.ask.timeout": "120s"
+    "high-availability": "org.apache.flink.kubernetes.highavailability.KubernetesHaServicesFactory"
+    "high-availability.storageDir": "gs://tiki-trackity-realtime/data/flink/prod/flink-ha"
+    "metrics.reporter.prom.class": "org.apache.flink.metrics.prometheus.PrometheusReporter"
+    "metrics.reporter.prom.port": "9500"
+    "metrics.reporters": "prom"
+    "state.backend": "rocksdb"
+    "state.backend.incremental": "true"
+    "state.backend.local-recovery": "false"
+    "state.backend.rocksdb.localdir": "/trackity/data/local"
+    "state.backend.rocksdb.log.dir": "/trackity/data/log"
+    "state.checkpoints.dir": "gs://tiki-trackity-realtime/data/flink/prod/checkpoints"
+    "state.savepoints.dir": "gs://tiki-trackity-realtime/data/flink/prod/savepoints"
+    "state.storage.fs.memory-threshold": "1024000b"
+    "taskmanager.memory.managed.size": "2000mb"
+    "taskmanager.memory.task.heap.size": "7500mb"
+    "taskmanager.memory.task.off-heap.size": "1000mb"
+    "taskmanager.numberOfTaskSlots": "64"
+  serviceAccount: "sherlock"
+  jobManager:
+    resource:
+      memory: 3gb
+      cpu: 1
+    replicas: 1
+    podTemplate:
+      spec:
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+            - mountPath: /.secrets/gcp
+              name: gcs-keyfile
+              readOnly: true
+        volumes:
+        - name: gcs-keyfile
+          secret:
+            secretName: files-trackity-transform-realtime
+  taskManager:
+    resource:
+      memory: 12gb
+      cpu: 3
+    replicas: 1
+    podTemplate:
+      spec:
+        nodeSelector:
+          tiki.services/dedicated: np-6-39
+        tolerations:
+          - effect: NoSchedule
+            key: dedicated
+            operator: Equal
+            value: np-6-39
+        affinity:
+          podAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - trackitime-prod
+                - key: component
+                  operator: In
+                  values:
+                  - taskmanager
+              topologyKey: topology.kubernetes.io/zone
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+              - mountPath: /trackity/data
+                name: datadir
+              - mountPath: /.secrets/gcp
+                name: gcs-keyfile
+                readOnly: true
+        volumes:
+          - name: datadir
+            persistentVolumeClaim:
+              claimName: flink-pvc-prod
+          - name: gcs-keyfile
+            secret:
+              secretName: files-trackity-transform-realtime
+  podTemplate:
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      annotations:
+        prometheus.io/port: "9500"
+        prometheus.io/scrape: "true"
+        tiki.vn/graylog: "true"
+    spec:
+      imagePullSecrets:
+        - name: tiki-gcr
+      securityContext:
+        fsGroup: 9999
+        runAsGroup: 9999
+        runAsNonRoot: true
+        runAsUser: 9999
+      containers:
+        - name: flink-main-container
+          env:
+              - name: APPLICATION_CONF
+                value: "/opt/flink/config/prod.conf"
+              - name: GOOGLE_APPLICATION_CREDENTIALS
+                value: "/.secrets/gcp/dwp-pp-streaming-keyfile"
+          envFrom:
+            - secretRef:
+                name: trackity-transform-env-secrets
+                optional: false
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/enable-access-log: "false"
+      nginx.ingress.kubernetes.io/proxy-body-size: 50m
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    template: '{{name}}-{{namespace}}.tiki.services'
+  job:
+    jarURI: local:///opt/flink/lib/trackity-streaming.jar
+    parallelism: 32
+    upgradeMode: last-state
+    state: running
+    entryClass: vn.tiki.trackity.transform.MainApp
+    allowNonRestoredState: true
+    initialSavepointPath: gs://tiki-trackity-realtime/data/flink/prod/checkpoints/cce20bed5fbc2f821e8a1bf3cdaacbdb/chk-62
+    args:
+      - ""
+---
+# Source: flink-deployment/templates/flink-deployment.yaml
+# @formatter:off
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: trackitime-prod
+spec:
+  image: "asia.gcr.io/tikivn/flink-k8s-example:0.7"
+  imagePullPolicy: IfNotPresent
+  flinkVersion: v1_15
+  flinkConfiguration:
+    "akka.ask.timeout": "120s"
+    "high-availability": "org.apache.flink.kubernetes.highavailability.KubernetesHaServicesFactory"
+    "high-availability.storageDir": "gs://tiki-trackity-realtime/data/flink/prod/flink-ha"
+    "metrics.reporter.prom.class": "org.apache.flink.metrics.prometheus.PrometheusReporter"
+    "metrics.reporter.prom.port": "9500"
+    "metrics.reporters": "prom"
+    "state.backend": "rocksdb"
+    "state.backend.incremental": "true"
+    "state.backend.local-recovery": "false"
+    "state.backend.rocksdb.localdir": "/trackity/data/local"
+    "state.backend.rocksdb.log.dir": "/trackity/data/log"
+    "state.checkpoints.dir": "gs://tiki-trackity-realtime/data/flink/prod/checkpoints"
+    "state.savepoints.dir": "gs://tiki-trackity-realtime/data/flink/prod/savepoints"
+    "state.storage.fs.memory-threshold": "1024000b"
+    "taskmanager.memory.managed.size": "2000mb"
+    "taskmanager.memory.task.heap.size": "7500mb"
+    "taskmanager.memory.task.off-heap.size": "1000mb"
+    "taskmanager.numberOfTaskSlots": "16"
+  serviceAccount: "sherlock"
+  jobManager:
+    resource:
+      memory: 4gb
+      cpu: 2
+    replicas: 1
+    podTemplate:
+      spec:
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+            - mountPath: /.secrets/gcp
+              name: gcs-keyfile
+              readOnly: true
+        volumes:
+        - name: gcs-keyfile
+          secret:
+            secretName: files-trackity-transform-realtime
+  taskManager:
+    resource:
+      memory: 12gb
+      cpu: 4
+    replicas: 1
+    podTemplate:
+      spec:
+        nodeSelector:
+          tiki.services/dedicated: flink-ssd
+        tolerations:
+          - effect: NoSchedule
+            key: dedicated
+            operator: Equal
+            value: flink-ssd
+        containers:
+          - name: flink-main-container
+            volumeMounts:
+              - mountPath: /trackity/data
+                name: datadir
+              - mountPath: /.secrets/gcp
+                name: gcs-keyfile
+                readOnly: true
+        volumes:
+          - hostPath:
+              path: /mnt/disks/ssd0
+            name: datadir
+          - name: gcs-keyfile
+            secret:
+              secretName: files-trackity-transform-realtime
+  podTemplate:
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      annotations:
+        prometheus.io/port: "9500"
+        prometheus.io/scrape: "true"
+        tiki.vn/graylog: "true"
+    spec:
+      imagePullSecrets:
+        - name: tiki-gcr
+      securityContext:
+        fsGroup: 9999
+        runAsGroup: 9999
+        runAsNonRoot: true
+        runAsUser: 9999
+      containers:
+        - name: flink-main-container
+          env:
+              - name: APPLICATION_CONF
+                value: "/opt/flink/config/prod.conf"
+              - name: GOOGLE_APPLICATION_CREDENTIALS
+                value: "/.secrets/gcp/dwp-pp-streaming-keyfile"
+          envFrom:
+            - secretRef:
+                name: trackity-transform-env-secrets
+                optional: false
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/enable-access-log: "false"
+      nginx.ingress.kubernetes.io/proxy-body-size: 50m
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    template: '{{name}}-{{namespace}}.tiki.services'
+  job:
+    jarURI: local:///opt/flink/lib/trackity-streaming.jar
+    parallelism: 16
+    upgradeMode: savepoint
+    state: running
+    entryClass: vn.tiki.trackity.transform.MainApp
+    allowNonRestoredState: true

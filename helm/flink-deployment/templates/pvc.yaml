@@ -1,0 +1,5 @@
+{{- if .Values.persistentVolumeClaim.name }}
+{{- template "common.pvc" . -}}
+{{ else if .Values.persistentVolumeClaim.list }}
+{{- template "common.multipvcs" . -}}
+{{- end }}

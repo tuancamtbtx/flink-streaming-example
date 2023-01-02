@@ -1,0 +1,26 @@
+{{- define "common.pvc" -}}
+  {{- $common := dict "Values" .Values.common -}}
+  {{- $noCommon := omit .Values "common" -}}
+  {{- $overrides := dict "Values" $noCommon -}}
+  {{- $noValues := omit . "Values" -}}
+  {{- with merge $noValues $overrides $common -}}
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.persistentVolumeClaim.name }}
+spec:
+  accessModes:
+  {{- range $value := .Values.persistentVolumeClaim.accessModes }}
+  - {{ $value }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistentVolumeClaim.storage }}
+  storageClassName: {{ .Values.persistentVolumeClaim.class }}
+  {{- if .Values.persistentVolumeClaim.volumeName }}
+  volumeName: {{ .Values.persistentVolumeClaim.volumeName}}
+  {{- end }}
+
+  {{- end -}}
+  {{- end -}}
