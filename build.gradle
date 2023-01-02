@@ -2,16 +2,120 @@ plugins {
     id 'java'
 }
 
-group 'org.example'
-version '1.0-SNAPSHOT'
+group 'vn.example'
+version '1.0'
+
+
 
 repositories {
     mavenCentral()
 }
+ext {
+    guavaVersion = "30.1.1-jre"
+    protobufVersion = "3.17.3"
+    kafkaVersion = "3.0.0"
+    jacksonVersion = "2.13.1"
+    flinkVersion = "1.15.2"
+    protoGenValidateVersion = "0.4.1"
+    scalaVersion = "2.12"
+    driverVersion = "4.5.1"
+    juniperVersion = "5.8.0"
+}
+
 
 dependencies {
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+    implementation 'com.codahale.metrics:metrics-core:3.0.2'
+
+    implementation group: 'io.github.cdimascio', name: 'java-dotenv', version: '5.2.2'
+
+    implementation group: 'org.apache.flink', name: 'flink-connector-kafka', version: flinkVersion
+    implementation group: 'com.google.inject', name: 'guice', version: '5.1.0'
+
+
+    implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
+    implementation("com.google.protobuf:protobuf-java-util:$protobufVersion")
+    implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion")
+    implementation("org.slf4j:slf4j-reload4j:1.7.36")
+    implementation("javax.ws.rs:javax.ws.rs-api:2.1")
+    implementation("com.google.code.gson:gson:2.8.2")
+    implementation("com.typesafe:config:1.4.2")
+    implementation("com.github.ua-parser:uap-java:1.5.2")
+
+    implementation("org.apache.flink:flink-shaded-jackson:$scalaVersion.4-14.0")
+    implementation("org.apache.flink:flink-java:$flinkVersion")
+    implementation("org.apache.flink:flink-core:$flinkVersion")
+    implementation("org.apache.flink:flink-streaming-scala_$scalaVersion:$flinkVersion")
+    implementation("org.apache.flink:flink-streaming-java:$flinkVersion")
+    implementation("org.apache.flink:flink-connector-jdbc:$flinkVersion")
+    implementation("org.apache.flink:flink-clients:$flinkVersion")
+
+
+    implementation('com.twitter:chill-protobuf:0.7.6') {
+        exclude(group: "com.esotericsoftware.kryo", module: "kryo")
+    }
+    implementation('org.apache.httpcomponents:httpclient:4.5.13')
+    implementation("org.slf4j:slf4j-reload4j:1.7.36")
+    implementation("org.slf4j:slf4j-api:1.7.36")
+    implementation("org.apache.flink:flink-json:$flinkVersion")
+    implementation("com.google.cloud:google-cloud-storage:2.6.1")
+    implementation("com.google.cloud.bigdataoss:gcs-connector:hadoop2-2.2.6")
+    implementation("io.prometheus:simpleclient:0.14.1")
+    implementation("com.datastax.oss:java-driver-mapper-processor:$driverVersion")
+    implementation("com.datastax.oss:java-driver-core:$driverVersion")
+    implementation("com.datastax.oss:java-driver-mapper-runtime:$driverVersion")
+    implementation("io.grpc:grpc-netty-shaded") {
+        version {
+            strictly("1.45.1")
+        }
+    }
+    implementation("io.grpc:grpc-stub") {
+        version {
+            strictly("1.45.1")
+        }
+    }
+    implementation("io.grpc:grpc-api") {
+        version {
+            strictly("1.45.1")
+        }
+    }
+
+    compileOnly("org.projectlombok:lombok:1.18.22")
+    compileOnly("org.apache.flink:flink-connector-kafka:$flinkVersion")
+    compileOnly("org.apache.flink:flink-metrics-prometheus:$flinkVersion")
+    compileOnly("org.apache.flink:flink-table-api-java:$flinkVersion")
+    compileOnly("org.apache.flink:flink-table-api-java-bridge:$flinkVersion")
+
+    annotationProcessor 'org.projectlombok:lombok:1.18.22'
+    annotationProcessor("com.datastax.oss:java-driver-mapper-processor:$driverVersion")
+
+    testImplementation("org.apache.flink:flink-streaming-java:$flinkVersion:tests")
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.22'
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: juniperVersion
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: juniperVersion
+    testImplementation("org.apache.flink:flink-test-utils-junit:$flinkVersion")
+    testImplementation("org.apache.flink:flink-test-utils:$flinkVersion")
+    testImplementation("org.apache.kafka:kafka-clients:$kafkaVersion")
+    testImplementation("org.apache.flink:flink-table-planner_$scalaVersion:$flinkVersion")
+    testImplementation("org.apache.kafka:kafka_$scalaVersion:3.0.0")
+    testImplementation("com.salesforce.kafka.test:kafka-junit5:3.2.4")
+    testImplementation("org.apache.flink:flink-runtime:$flinkVersion:tests")
+    testImplementation 'org.mockito:mockito-all:1.10.19'
+    testImplementation("io.grpc:grpc-netty-shaded") {
+        version {
+            strictly("1.45.1")
+        }
+    }
+    testImplementation("io.grpc:grpc-stub") {
+        version {
+            strictly("1.45.1")
+        }
+    }
+    testImplementation("io.grpc:grpc-api") {
+        version {
+            strictly("1.45.1")
+        }
+    }
 }
 
 test {
