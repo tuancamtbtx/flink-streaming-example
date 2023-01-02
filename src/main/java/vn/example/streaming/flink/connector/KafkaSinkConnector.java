@@ -4,7 +4,7 @@ import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
-import vn.example.streaming.flink.entities.config.KafkaSinkConfig;
+import vn.example.streaming.flink.entities.KafkaSinkConfig;
 
 import java.io.Serializable;
 

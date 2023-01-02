@@ -1,4 +1,4 @@
-package vn.example.streaming.flink.entities.config;
+package vn.example.streaming.flink.entities;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonProperty;

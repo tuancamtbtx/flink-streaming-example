@@ -10,7 +10,7 @@ import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.Preconditions;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import vn.example.streaming.flink.entities.config.KafkaSourceConfig;
+import vn.example.streaming.flink.entities.KafkaSourceConfig;
 
 import java.time.Duration;
 import java.util.Properties;
