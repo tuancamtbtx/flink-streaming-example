@@ -74,7 +74,7 @@ spec:
         tolerations:
           {{- toYaml .tolerations | nindent 10 }}
         {{- end }}
-        {{- if or .nodeAffinity  .podAffinity }}
+        {{- if or .nodeAffinity  .podAffinity  .podAntiAffinity }}
         affinity:
           {{- if .nodeAffinity }}
           nodeAffinity:
@@ -83,6 +83,10 @@ spec:
           {{- if .podAffinity }}
           podAffinity:
             {{- toYaml .podAffinity | nindent 12 }}
+          { { - end } }
+          { { - if .podAntiAffinity } }
+          podAntiAffinity:
+            { { - toYaml .podAntiAffinity | nindent 12 } }
           {{- end }}
         {{- end }}
         containers:
